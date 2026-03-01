@@ -1,0 +1,4 @@
+Sales Contract,销售合同
+Sales Delivery,销售出库单
+Sales Delivery with Price,销售出库单（带价格）
+Merge taxes from multiple documents,合并多个单据的税额，避免出现尾差

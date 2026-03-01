@@ -1,0 +1,7 @@
+﻿{
+    "name": "erpnext_printing_scripts",
+    "version": "1.0.0",
+    "dependencies": {
+        "puppeteer": "^22.15.0"
+    }
+}

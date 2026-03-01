@@ -1,0 +1,7 @@
+﻿include erpnext_printing/hooks.py
+include erpnext_printing/__init__.py
+graft erpnext_printing/print_formats
+graft erpnext_printing/public
+graft erpnext_printing/templates
+graft erpnext_printing/translations
+graft erpnext_printing/node_scripts

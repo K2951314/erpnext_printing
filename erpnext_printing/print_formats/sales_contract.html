@@ -1,0 +1,237 @@
+﻿<head>
+    <style>
+        @page {
+            size: A4;
+            margin: 20mm;
+        }
+        h2, h3, p, table thead th, {
+            line-height:1.42857143; /* 明确设置行间距 */
+        }
+        h2, h3, p {
+            font-size: 12pt;
+            line-height:1.42857143
+        }
+        table thead th {
+            font-size: 12pt;
+            font-weight: bold;
+            line-height:1.42857143
+        }
+        table tbody td {
+            font-size: 10pt;
+        }
+        .signature-section td {
+            vertical-align: top;
+            text-align: left;
+        }
+       
+        /* 仅在导出时应用的样式 */
+        /* 在打印样式表中添加 */
+        .exporting p {
+          margin: 3px 0 !important; /* 强制设置段落间距 */
+          line-height: 1.42857143 !important;
+          padding: 0 !important;
+        }
+        
+        /* 打印时的样式（覆盖正常显示和导出样式） */
+        @media print {
+            .export-image-btn {
+                display: none !important; /* 确保优先级最高 */
+            }
+        }
+        .export-image-btn {
+            position: fixed;
+            top: 29px;
+            right: 29px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 12pt;
+            border-radius: 5px;
+            z-index: 1000; /* 确保按钮显示在页面顶层 */
+        }
+        .export-image-btn:hover {
+            background-color: #45a049;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+   <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 自动触发导出，不显示按钮
+            exportImage();
+
+            function exportImage() {
+                const printFormat = document.querySelector('.print-format');
+                if (!printFormat) {
+                    console.error('未找到 .print-format 元素');
+                    return;
+                }
+
+                // 保存原始边框和样式
+                const greenBorder = printFormat.style.border;
+                const originalTransform = printFormat.style.transform;
+                const originalWidth = printFormat.style.width;
+                const originalHeight = printFormat.style.height;
+
+                // 临时调整样式以确保正确渲染
+                printFormat.style.border = 'none';
+                printFormat.style.transform = 'none';
+                printFormat.style.width = 'auto';
+                printFormat.style.height = 'auto';
+
+                // 添加 exporting 类
+                document.body.classList.add('exporting');
+
+                // 获取 .print-format 的完整尺寸
+                const width = printFormat.scrollWidth;
+                const height = printFormat.scrollHeight;
+
+                html2canvas(printFormat, {
+                    scale: 2, // 1:1 比例
+                    useCORS: true, // 解决跨域图片问题
+                    allowTaint: true, // 允许污染的图片
+                    width: width, // 使用实际宽度
+                    height: height, // 使用实际高度
+                    windowWidth: width, // 设置视口宽度
+                    windowHeight: height, // 设置视口高度
+                    scrollX: 0, // 从元素左侧开始
+                    scrollY: 0 // 从元素顶部开始
+                }).then(canvas => {
+                    // 恢复原始样式
+                    printFormat.style.border = greenBorder;
+                    printFormat.style.transform = originalTransform;
+                    printFormat.style.width = originalWidth;
+                    printFormat.style.height = originalHeight;
+                    document.body.classList.remove('exporting');
+
+                    // 自动下载图片
+                    const link = document.createElement('a');
+                    link.download = `销售合同${'{{ doc.name }}'}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                }).catch(error => {
+                    console.error('生成图片失败:', error);
+                    alert('导出图片失败，请检查控制台错误。');
+                    // 恢复原始样式
+                    printFormat.style.border = greenBorder;
+                    printFormat.style.transform = originalTransform;
+                    printFormat.style.width = originalWidth;
+                    printFormat.style.height = originalHeight;
+                    document.body.classList.remove('exporting');
+                });
+            }
+        });
+    </script>
+</head>
+<div style="font-family: SimSun; width: 100%;">
+    <!-- 包裹合同内容的div，不设置固定尺寸，保持原布局 -->
+    <div class="print-content">
+        <!-- 客户信息部分 -->
+        {% set customer_doc = frappe.get_doc("Customer", doc.customer) %}
+        {% set address = frappe.get_all("Address", filters={"link_doctype": "Customer", "link_name": doc.customer, "address_type": "Billing"}, fields=["*"], limit=1) %}
+        {% set contact = frappe.get_all("Contact", filters={"link_doctype": "Customer", "link_name": doc.customer}, fields=["*"], limit=1) %}
+        {% set company_contact = frappe.get_all("Contact", filters={"link_doctype": "Company", "link_name": doc.company, "is_primary_contact": 1}, fields=["first_name", "last_name", "phone"]) %}
+        {% set bank_account = frappe.get_all("Bank Account", filters={"company": doc.company, "is_default": 1,"is_company_account":1}, fields=["bank", "bank_account_no"]) %}
+        <!-- 调用自定义函数获取随机参数 -->
+        {% set seal_params = frappe.call('erpnext_printing.utils.get_random_seal_params') %}
+
+        <!-- 标题 -->
+        <h2 style="text-align: center;">销售合同</h2>
+        <p style="text-align: right;">合同编号: {{ doc.name }}</p>
+
+        <!-- 供需双方信息（左右对齐） -->
+        <table style="width: 100%; border: none; margin-bottom: 20px;">
+            <tr>
+                <td style="width: 50%; padding-right: 20px;">
+                    <h3>需方（买方）</h3>
+                    <p>名称：{{ doc.customer_name }}</p>
+                    <p>联系人：{% if contact %}{{contact[0].first_name}}{% else %}未设置{% endif %}</p>
+                </td>
+                <td style="width: 50%; padding-left: 20px;">
+                    <h3>供方（卖方）</h3>
+                    <p>名称：{{ doc.company }}</p>
+                    <p>联系人：{% if company_contact %}{{ company_contact[0].first_name }} {{ company_contact[0].last_name }}{% else %}未设置{% endif %}</p>
+                </td>
+            </tr>
+        </table>
+
+        <p>经供需双方友好协商签订如下合同：</p>
+
+        <!-- 第一条 合同标的 -->
+        <h3>第一条 合同标的</h3>
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid black;text-align: center">
+            <thead>
+                <tr>
+                    <th style="border: 1px solid black;text-align: center">序号</th>
+                    <th style="border: 1px solid black;text-align: center">商品名称</th>
+                    <th style="border: 1px solid black;text-align: center">物料号</th>
+                    <th style="border: 1px solid black;text-align: center">规格型号</th>
+                    <th style="border: 1px solid black;text-align: center">数量</th>
+                    <th style="border: 1px solid black;text-align: center">单位</th>
+                    <th style="border: 1px solid black;text-align: center">含税价</th>
+                    <th style="border: 1px solid black;text-align: center">金额</th>
+                       <!--  <th style="border: 1px solid black;text-align: center">备注</th>-->
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in doc.items %}
+                {% set item_doc = frappe.get_doc("Item", item.item_code) %}
+                <tr>
+                    <td style="border: 1px solid black;">{{ loop.index }}</td>
+                    <td style="border: 1px solid black;">{{ item.item_name }}</td>
+                    <td style="border: 1px solid black;">{{ item.item_code }}</td>
+                    <td style="border: 1px solid black;">{{ item_doc.custom_规格型号 or "未设置"}}</td>
+                    <td style="border: 1px solid black;">{{ '%.0f' % item.qty }}</td>
+                    <td style="border: 1px solid black;">{{ item.uom }}</td>
+                    <td style="border: 1px solid black;">{{ '%.2f' % item.rate}}</td>
+                    <td style="border: 1px solid black;">{{ '%.2f' % item.amount}}</td>
+                       <!--  <td style="border: 1px solid black;">{{ item.remarks or "" }}</td>-->
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <p><strong>总计数量：</strong>{{ '%.0f' % doc.total_qty or 0 }}</p>
+        <p><strong>总计：</strong>人民币【{{'%.2f' % doc.grand_total}}】元整（大写：{{ frappe.utils.money_in_words(doc.grand_total, "CNY") }}）</p>
+
+        <!-- 第二条 交货条款 -->
+        <h3>第二条 交货条款</h3>
+        <p>交货时间：款到发货</p>
+        <p>交货地点：{% if contact %}{{ contact[0].first_name }}{{ contact[0].phone or "" }}{{ address[0].state or "" }}{{ address[0].city}}{{ address[0].address_line1}}{% else %}未设置{% endif %}</p>
+
+        <!-- 第三条 收款信息 -->
+        <h3>第三条 收款账号及银行信息</h3>
+        <p>开户行：{{ bank_account[0].bank }}</p>
+        <p>银行账号：{{ bank_account[0].bank_account_no or '未设置'}}</p>
+
+        <!-- 第四条 验收与异议 -->
+        <h3>第四条 验收与异议</h3>
+        <p>验收标准：以双方确认的样品、技术协议或国家标准为准。</p>
+        <p>验收期限：需方应在收到货物后3个自然日内完成验收。</p>
+        <p>异议处理：若货物存在质量问题，需方需在验收期内书面提出，否则视为供方所提供产品符合合同约定。</p>
+
+        <!-- 第五条 其他条款 -->
+        <h3>第五条 其他条款</h3>
+        <p>本合同未尽事宜，双方应签订书面补充协议。</p>
+        <p>本合同一式2份，供需双方各执1份，自双方签字盖章之日起生效。</p>
+
+        <!-- 签字和盖章（统一左对齐） -->
+        <table class="signature-section" style="width: 100%; border: none;">
+            <tr>
+                <td style="width: 50%;">
+                    <h3>需方（买方）</h3>
+                    <p>法定代表人/授权代表：        </p>
+                    <p>签署日期：        </p> <!-- 买方签署日期留空 -->
+                </td>
+                <td style="width: 50%;">
+                    <div style="position: relative; height: 60px; margin-top: 20px;">
+                    <h3>供方（卖方）</h3>
+                    <p>法定代表人/授权代表：        </p>
+                    <p>签署日期：{{ frappe.utils.getdate(doc.transaction_date).strftime("%Y年%m月%d日") }}</p>
+                    <img src="/private/files/合同章.png" style="width: 42mm; max-width: 42mm; height: auto; position: absolute; top: {{ seal_params.random_top }}mm; left: {{ seal_params.random_left }}mm; transform: rotate({{ seal_params.rotation_angle }}deg); opacity: {{ seal_params.opacity }};" />
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+</div>

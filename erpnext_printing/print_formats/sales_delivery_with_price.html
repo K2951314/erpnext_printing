@@ -1,0 +1,177 @@
+﻿<head>
+    <style>
+        @page {
+            size: 210mm 148mm;
+            margin: 10mm; /* 打印时的物理边距 */
+        }
+        .print-format {
+            width: 100%;
+            /* 固定内容区域尺寸 */
+            width: 190mm; /* 210mm - 2×10mm margin */
+            height: 128mm; /* 148mm - 2×10mm margin */
+            padding: 6.66mm 0mm 0mm 0mm; /* 顶部填充 10mm，左右和底部为 0 */
+            box-sizing: border-box;
+        }
+        h2, h3, p, table thead th, {
+            line-height:1.42857143; /* 明确设置行间距 */
+        }
+        h2, h3{
+            font-size: 12pt;
+            line-height:1.42857143
+        }
+        table thead th {
+            font-size: 12pt;
+            font-weight: bold;
+            line-height:1.42857143
+        }
+        p,td{
+            font-size: 10pt;
+        }
+        .signature-section td {
+            vertical-align: top;
+            text-align: left;
+        }
+        /* 导出图片时的样式 */
+        .exporting p {
+            margin: 0px 0 !important;
+            line-height: 1.2 !important;
+            padding: 0 !important;
+        }
+        @media print {
+            .export-image-btn {
+                display: none !important;
+            }
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            exportImage();
+        });
+
+        function exportImage() {
+            const printFormat = document.querySelector('.print-format');
+            if (!printFormat) {
+                console.error('未找到 .print-format 元素');
+                return;
+            }
+
+            // 保存原始样式
+            const originalWidth = printFormat.style.width;
+            const originalHeight = printFormat.style.height;
+
+            // 固定尺寸为 210mm x 145mm
+            printFormat.style.width = '210mm';
+            printFormat.style.height = '148mm';
+
+            document.body.classList.add('exporting');
+
+            // 转换为像素 (假设 96 DPI)
+            const mmToPx = mm => mm * 96 / 25.4;
+            const desiredWidthPx = mmToPx(210);  // 约 793px
+            const desiredHeightPx = mmToPx(148); // 约 548px
+
+            html2canvas(printFormat, {
+                scale: 2, // 提高清晰度
+                useCORS: true,
+                allowTaint: true,
+                width: desiredWidthPx,
+                height: desiredHeightPx,
+                windowWidth: desiredWidthPx,
+                windowHeight: desiredHeightPx,
+                scrollX: 0,
+                scrollY: 0
+            }).then(canvas => {
+                printFormat.style.width = originalWidth;
+                printFormat.style.height = originalHeight;
+                document.body.classList.remove('exporting');
+
+                const link = document.createElement('a');
+                link.download = `销售出库单${'{{ doc.name }}'}.png`; // 改为出库单文件名
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            }).catch(error => {
+                console.error('生成图片失败:', error);
+                alert('导出图片失败，请检查控制台错误。');
+                printFormat.style.width = originalWidth;
+                printFormat.style.height = originalHeight;
+                document.body.classList.remove('exporting');
+            });
+        }
+    </script>
+</head>
+<div class="print-format">
+     <!-- 客户信息部分 -->
+        {% set customer_doc = frappe.get_doc("Customer", doc.customer) %}
+        {% set address = frappe.get_all("Address", filters={"link_doctype": "Customer", "link_name": doc.customer, "address_type": "Billing"}, fields=["*"], limit=1) %}
+        {% set contact = frappe.get_all("Contact", filters={"link_doctype": "Customer", "link_name": doc.customer}, fields=["*"], limit=1) %}
+        {% set company_contact = frappe.get_all("Contact", filters={"link_doctype": "Company", "link_name": doc.company, "is_primary_contact": 1}, fields=["first_name", "last_name", "phone"]) %}
+        {% set bank_account = frappe.get_all("Bank Account", filters={"company": doc.company, "is_default": 1}, fields=["bank", "bank_account_no"]) %}
+        <!-- 调用自定义函数获取随机参数 -->
+        {% set seal_params = frappe.call('erpnext_printing.utils.get_random_seal_params') %}
+
+    <!-- 标题和基本信息 -->
+    <!-- <h2 style="text-align: center;">{{ doc.company }}</h2> -->
+    <h1 style="text-align: center;">舍满取半销售出库单</h2>
+    <table style="width: 100%; border: none; margin-bottom: 20px;">
+            <tr>
+                <td style="width: 50%; padding-right: 20px;">
+                    <p>客户名称：{{ doc.customer_name }}</p>
+                    <p>客户地址：{% if contact %}{{ address[0].state or "" }}{{ address[0].city}}{{ address[0].address_line1}}{% else %}未设置{% endif %}</p>
+                </td>
+                <td style="width: 50%; padding-left: 20px;">
+                     <p style="text-align: right;">出库单号：{{ doc.name or '无' }}</p>
+    <p style="text-align: right;">出库日期：{{ frappe.utils.formatdate(doc.posting_date) or '无' }}</p>
+                </td>
+            </tr>
+        </table>
+   
+    <!-- 商品明细 -->
+    <h3>出库商品明细</h3>
+    <table style="width: 100%; border-collapse: collapse; border: 1px solid black;text-align: center">
+        <thead>
+            <tr>
+                <th style="border: 1px solid black;text-align: center">序号</th>
+                <th style="border: 1px solid black;text-align: center">商品名称</th>
+                <th style="border: 1px solid black;text-align: center">物料号</th>
+                <th style="border: 1px solid black;text-align: center">规格型号</th>
+                <th style="border: 1px solid black;text-align: center">数量</th>
+                <th style="border: 1px solid black;text-align: center">单位</th>
+                    <th style="border: 1px solid black;text-align: center">含税价</th>
+                    <th style="border: 1px solid black;text-align: center">金额</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in doc.items %}
+            {% set item_doc = frappe.get_doc("Item", item.item_code) %}
+            <tr>
+                <td style="border: 1px solid black;">{{ loop.index }}</td>
+                <td style="border: 1px solid black;">{{ item.item_name }}</td>
+                <td style="border: 1px solid black;">{{ item.item_code or '无' }}</td>
+                <td style="border: 1px solid black;">{{ item_doc.custom_规格型号 or "未设置" }}</td>
+                <td style="border: 1px solid black;">{{ '%.0f' % item.qty or 0 }}</td>
+                <td style="border: 1px solid black;">{{ item.stock_uom or '无' }}</td>
+                    <td style="border: 1px solid black;">{{ '%.2f' % item.rate}}</td>
+                    <td style="border: 1px solid black;">{{ '%.2f' % item.amount}}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <p><strong>总计数量：</strong>{{ '%.0f' % doc.total_qty or 0 }}</p><p><strong>总计：</strong>人民币【{{'%.2f' % doc.grand_total}}】元整（大写：{{ frappe.utils.money_in_words(doc.grand_total, "CNY") }}）</p>
+
+<p><strong>备注：</strong>客户收到货后，如果发生产品质量问题、数量问题，请在3个自然日内出示书面通知我司处理，逾期本公司概不负责。</p>
+    <!-- 签名区 -->
+    <table class="signature-section" style="width: 100%; border: none; margin-top: 5mm;">
+        <tr>
+            <td style="width: 33%;">
+                <p><strong>制单：</strong>{% if company_contact %}{{ company_contact[0].first_name }} {{ company_contact[0].last_name }}{% else %}未设置{% endif %}</p>
+            </td>
+            <td style="width: 33%;">
+                <p><strong>仓库：</strong></p>
+            </td>
+            <td style="width: 20%;">
+                <p><strong>客户签单：</strong></p>
+            </td>
+        </tr>
+    </table>
+</div>
