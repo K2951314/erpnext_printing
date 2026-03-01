@@ -1,4 +1,4 @@
-﻿[project]
+[project]
 name = "erpnext_printing"
 authors = [
     { name = "舍满取半", email = "qdsmqb@163.com" }
