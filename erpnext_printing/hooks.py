@@ -24,6 +24,9 @@ doc_events = {
     }
 }
 
+LEGACY_SEAL_CALL = "erpnext_math.utils.get_random_seal_params"
+CURRENT_SEAL_CALL = "erpnext_printing.utils.get_random_seal_params"
+
 
 def _load_print_format_html(filename):
     import frappe
@@ -63,6 +66,23 @@ def _upsert_print_format(name, doc_type, filename):
     pf.insert(ignore_permissions=True)
 
 
+def fix_legacy_print_format_calls():
+    import frappe
+
+    candidates = frappe.get_all(
+        "Print Format",
+        filters={"html": ["like", f"%{LEGACY_SEAL_CALL}%"]},
+        pluck="name",
+    )
+
+    for name in candidates:
+        pf = frappe.get_doc("Print Format", name)
+        pf.html = (pf.html or "").replace(LEGACY_SEAL_CALL, CURRENT_SEAL_CALL)
+        pf.save(ignore_permissions=True)
+
+    return {"updated": len(candidates), "names": candidates}
+
+
 def after_install():
     from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
@@ -73,6 +93,7 @@ def after_install():
         "Delivery Note",
         "sales_delivery_with_price.html",
     )
+    fix_legacy_print_format_calls()
 
     create_custom_fields(
         {
