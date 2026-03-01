@@ -192,7 +192,7 @@
             </tbody>
         </table>
         <p><strong>总计数量：</strong>{{ '%.0f' % doc.total_qty or 0 }}</p>
-        <p><strong>总计：</strong>人民币【{{'%.2f' % doc.grand_total}}】元整（大写：{{ frappe.call('erpnext_printing.utils.rmb_upper', amount=doc.grand_total) }}）</p>
+        <p><strong>总计：</strong>人民币【{{'%.2f' % doc.grand_total}}】元整（大写：{{ rmb_upper(doc.grand_total) }}）</p>
 
         <!-- 第二条 交货条款 -->
         <h3>第二条 交货条款</h3>
