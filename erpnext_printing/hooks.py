@@ -27,7 +27,8 @@ doc_events = {
 LEGACY_SEAL_CALL = "erpnext_math.utils.get_random_seal_params"
 CURRENT_SEAL_CALL = "erpnext_printing.utils.get_random_seal_params"
 LEGACY_MONEY_CALL = "{{ frappe.utils.money_in_words(doc.grand_total, \"CNY\") }}"
-CURRENT_MONEY_CALL = "{{ frappe.call('erpnext_printing.utils.rmb_upper', doc.grand_total) }}"
+BROKEN_MONEY_CALL = "{{ frappe.call('erpnext_printing.utils.rmb_upper', doc.grand_total) }}"
+CURRENT_MONEY_CALL = "{{ frappe.call('erpnext_printing.utils.rmb_upper', amount=doc.grand_total) }}"
 
 
 def _load_print_format_html(filename):
@@ -89,6 +90,7 @@ def fix_legacy_print_format_calls():
             (pf.html or "")
             .replace(LEGACY_SEAL_CALL, CURRENT_SEAL_CALL)
             .replace(LEGACY_MONEY_CALL, CURRENT_MONEY_CALL)
+            .replace(BROKEN_MONEY_CALL, CURRENT_MONEY_CALL)
         )
         pf.save(ignore_permissions=True)
 
