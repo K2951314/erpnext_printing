@@ -157,7 +157,7 @@
             {% endfor %}
         </tbody>
     </table>
-    <p><strong>总计数量：</strong>{{ '%.0f' % doc.total_qty or 0 }}</p><p><strong>总计：</strong>人民币【{{'%.2f' % doc.grand_total}}】元整（大写：{{ frappe.utils.money_in_words(doc.grand_total, "CNY") }}）</p>
+    <p><strong>总计数量：</strong>{{ '%.0f' % doc.total_qty or 0 }}</p><p><strong>总计：</strong>人民币【{{'%.2f' % doc.grand_total}}】元整（大写：{{ frappe.call('erpnext_printing.utils.rmb_upper', doc.grand_total) }}）</p>
 
 <p><strong>备注：</strong>客户收到货后，如果发生产品质量问题、数量问题，请在3个自然日内出示书面通知我司处理，逾期本公司概不负责。</p>
     <!-- 签名区 -->
